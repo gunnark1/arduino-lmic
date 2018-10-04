@@ -36,15 +36,15 @@
 // LoRaWAN NwkSKey, network session key
 // This is the default Semtech key, which is used by the early prototype TTN
 // network.
-static const PROGMEM u1_t NWKSKEY[16] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
+static const PROGMEM u1_t NWKSKEY[16] = { 0x19, 0x9C, 0x54, 0xB3, 0xE6, 0xD1, 0x3C, 0xA8, 0x30, 0xE9, 0x78, 0xC3, 0xC4, 0xC1, 0x22, 0xED };
 
 // LoRaWAN AppSKey, application session key
 // This is the default Semtech key, which is used by the early prototype TTN
 // network.
-static const u1_t PROGMEM APPSKEY[16] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
+static const u1_t PROGMEM APPSKEY[16] = { 0x27, 0x1A, 0x31, 0x7D, 0x42, 0xB1, 0x29, 0xC0, 0x7C, 0xBB, 0x3D, 0x61, 0xCA, 0x85, 0x88, 0x6A };
 
 // LoRaWAN end-device address (DevAddr)
-static const u4_t DEVADDR = 0x03FF0001 ; // <-- Change this address for every node!
+static const u4_t DEVADDR = 0x26011D27 ; // <-- Change this address for every node! 
 
 // These callbacks are only used in over-the-air activation, so they are
 // left empty here (we cannot leave them out completely unless
@@ -53,19 +53,26 @@ void os_getArtEui (u1_t* buf) { }
 void os_getDevEui (u1_t* buf) { }
 void os_getDevKey (u1_t* buf) { }
 
-static uint8_t mydata[] = "Hello, world!";
+static uint8_t mydata[] = "HW!";
 static osjob_t sendjob;
 
 // Schedule TX every this many seconds (might become longer due to duty
 // cycle limitations).
-const unsigned TX_INTERVAL = 60;
+const unsigned TX_INTERVAL = 10;
 
 // Pin mapping
+//const lmic_pinmap lmic_pins = {
+//    .nss = 6,
+//    .rxtx = LMIC_UNUSED_PIN,
+//    .rst = 5,
+//    .dio = {2, 3, 4},
+//};
+
 const lmic_pinmap lmic_pins = {
-    .nss = 6,
+    .nss = 16,
     .rxtx = LMIC_UNUSED_PIN,
-    .rst = 5,
-    .dio = {2, 3, 4},
+    .rst = LMIC_UNUSED_PIN,
+    .dio = {15, 15, 15},
 };
 
 void onEvent (ev_t ev) {
@@ -127,6 +134,12 @@ void onEvent (ev_t ev) {
         case EV_LINK_ALIVE:
             Serial.println(F("EV_LINK_ALIVE"));
             break;
+        case EV_SCAN_FOUND:
+            Serial.println(F("EV_SCAN_FOUND"));
+            break;
+        case EV_TXSTART:
+            Serial.println(F("EV_TXSTART"));
+            break;
          default:
             Serial.println(F("Unknown event"));
             break;
@@ -176,7 +189,7 @@ void setup() {
     // If not running an AVR with PROGMEM, just use the arrays directly
     LMIC_setSession (0x1, DEVADDR, NWKSKEY, APPSKEY);
     #endif
-
+ 
     #if defined(CFG_eu868)
     // Set up the channels used by the Things Network, which corresponds
     // to the defaults of most gateways. Without this, only three base
@@ -196,6 +209,8 @@ void setup() {
     LMIC_setupChannel(6, 867700000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
     LMIC_setupChannel(7, 867900000, DR_RANGE_MAP(DR_SF12, DR_SF7),  BAND_CENTI);      // g-band
     LMIC_setupChannel(8, 868800000, DR_RANGE_MAP(DR_FSK,  DR_FSK),  BAND_MILLI);      // g2-band
+    for (int i = 1; i <= 8; i++) LMIC_disableChannel(i);
+    
     // TTN defines an additional channel at 869.525Mhz using SF9 for class B
     // devices' ping slots. LMIC does not have an easy way to define set this
     // frequency and support for class B is spotty and untested, so this
@@ -215,7 +230,8 @@ void setup() {
     LMIC.dn2Dr = DR_SF9;
 
     // Set data rate and transmit power for uplink (note: txpow seems to be ignored by the library)
-    LMIC_setDrTxpow(DR_SF7,14);
+    //LMIC_setDrTxpow(DR_SF7,14);
+    LMIC_setDrTxpow(DR_SF9,14); //GK *** endret fra sf7 til sf9
 
     // Start job
     do_send(&sendjob);
@@ -224,3 +240,4 @@ void setup() {
 void loop() {
     os_runloop_once();
 }
+
